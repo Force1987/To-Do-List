@@ -32,7 +32,7 @@ struct Task
 	bool complete = false;
 	bool operator < (const Task& right) const {
 		if (date < right.date) return true;
-		if (time < right.time) return true;
+		if (date == right.date&&time < right.time) return true;
 		return false;
 	}
 	bool operator == (const Task& right) const {
