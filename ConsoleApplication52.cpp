@@ -32,7 +32,7 @@ struct Task
 	bool complete = false;
 	bool operator < (const Task& right) const {
 		if (date < right.date) return true;
-		if (time < right.time) return true;
+		if (date == right.date&&time < right.time) return true;
 		return false;
 	}
 	bool operator == (const Task& right) const {
@@ -41,21 +41,22 @@ struct Task
 };
 friend ostream& operator<< (ostream& out, const Task& point);
 
-const string months[13] = { "","January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
+const pair<string, int> months[13] = { {"",0},{"January",31}, {"February",28}, {"March",31}, {"April",30}, {"May",31}, {"June",30}, {"July",31}, {"August",31},
+											  {"September",30}, {"October",31}, {"November",30}, {"December",31} };
 
 	map<int, map<int, map<int, set<Task>>>> list;
 
-public:
+	set<Task>* getDay(const int& year, const int& month, const int& day) {
+		if (list.find(year) == list.end())
+			return NULL;
+		if (list[year].find(month) == list[year].end())
+			return NULL;
+		if (list[year][month].find(day) == list[year][month].end())
+			return NULL;
+		return &list[year][month][day];
+	}
 
-	set<Task>* const getDay (const int& year, const int& month, const int& day) {
-	if (list.find(year) == list.end())
-		return NULL;
-	if (list[year].find(month) == list[year].end())
-		return NULL;
-	if (list[year][month].find(day) == list[year][month].end())
-		return NULL;
-	return &list[year][month][day];
-}
+public:
 
 	void addTask(Date date, string time, string task) {
 		if (list[date.year][date.month][date.day].insert({ date,time,task }).second)
@@ -75,15 +76,19 @@ public:
 			cout << "No such task exists.\n";
 	}
 	
-	void delTask(set<ToDo_List::Task>::iterator task) {
-		list[task->date.year][task->date.month][task->date.day].erase(task);
+	set<ToDo_List::Task>::iterator delTask(set<ToDo_List::Task>::iterator task) {
+		Date check{ task->date.year ,task->date.month ,task->date.day };
+		auto it = list[task->date.year][task->date.month][task->date.day].erase(task);
+		if (list[check.year][check.month][check.day].empty())
+			list[check.year][check.month].erase(check.day);
+		return it;
 	}
 
 	void listTasks() {
 		for (auto year : list) {
 			cout << year.first << " year:\n";
 			for (auto month : year.second) {
-				cout << "\t" << months[month.first]<<":\n";
+				cout << "\t" << months[month.first].first<<":\n";
 				for (auto day : month.second) {
 					cout << "\t\t" << day.first << ":\n";
 					for (auto task : day.second) {
@@ -92,8 +97,52 @@ public:
 				}
 			}
 		}
-		cout << endl;
 	}
+
+	void listTasks(Date date) {
+		set<Task>* day = getDay(date.year, date.month, date.day);
+		if (day) {
+			for (const auto& task : *day)
+				cout << task;
+		}
+		else
+			cout << "No scheduled tasks for " << date<<endl;
+	}
+
+	void transferIncomplete(Date date) {
+		set<Task>* day = getDay(date.year, date.month, date.day);
+		int counter = 0;
+		if (day) {
+			for (auto task = day->begin(); task != day->end();) {
+				if (!task->complete) {
+					++counter;
+					if (((date.year % 400 == 0) || ((date.year % 4 == 0) && (date.year % 100 != 0))) && date.month == 2) {  //високосный год
+						if (date.day == 29)
+							list[date.year][date.month + 1][1].insert(*task);
+						else
+							list[date.year][date.month][date.day + 1].insert(*task);
+					}
+					else if (months[date.month].second == date.day) {														//последний день месяца
+						if (date.month == 12)
+							list[date.year + 1][1][1].insert(*task);
+						else
+							list[date.year][date.month + 1][1].insert(*task);
+					}
+					else
+						list[date.year][date.month][date.day + 1].insert(*task);												// общий случай
+					task = list[task->date.year][task->date.month][task->date.day].erase(task);
+
+				}
+				else
+				{
+					++task;
+				}
+			}
+		}
+		if (counter==0)
+			cout << "No incomplete tasks for " << date<<endl;
+	}
+
 };
 
 ostream& operator<< (ostream& out, const ToDo_List::Date& date)
@@ -115,4 +164,9 @@ int main()
 	myList.addTask({ 2022,8,29 }, "17:22"s, "Learn C++"s);
 	myList.listTasks();
 	myList.delTask({ { 2022,8,29 }, "17:22"s, "Learn C++"s });
+	myList.transferIncomplete({ 2022,8,29 });
+	myList.listTasks({2022,8,30});
+	myList.addTask({ 2022,8,29 }, "17:22"s, "Learn C++"s);
+	myList.transferIncomplete({ 2022,8,29 });
+	myList.listTasks({2022,8,30});
 }
