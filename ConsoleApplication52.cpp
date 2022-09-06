@@ -65,23 +65,17 @@ public:
 			cout << "Task is already exists.\n";
 	}
 
-	void delTask(Task task) {
+	void delTask(Task task, bool transfer=0) {
 		set<Task>* tptr;
 		tptr = getDay(task.date.year, task.date.month, task.date.day);
 		if (tptr != NULL) {
 			tptr->erase(task);
-			cout << task << " is deleted.\n";
+			if (transfer == 0) {
+				cout << task << " is deleted.\n";
+			}
+			else
+				cout << "No such task exists.\n";
 		}
-		else
-			cout << "No such task exists.\n";
-	}
-	
-	set<ToDo_List::Task>::iterator delTask(set<ToDo_List::Task>::iterator task) {
-		Date check{ task->date.year ,task->date.month ,task->date.day };
-		auto it = list[task->date.year][task->date.month][task->date.day].erase(task);
-		if (list[check.year][check.month][check.day].empty())
-			list[check.year][check.month].erase(check.day);
-		return it;
 	}
 
 	void listTasks() {
@@ -113,29 +107,28 @@ public:
 		set<Task>* day = getDay(date.year, date.month, date.day);
 		int counter = 0;
 		if (day) {
-			for (auto task = day->begin(); task != day->end();) {
-				if (!task->complete) {
+			for (auto& task:*day) {
+				if (!task.complete) {
 					++counter;
 					if (((date.year % 400 == 0) || ((date.year % 4 == 0) && (date.year % 100 != 0))) && date.month == 2) {  //високосный год
 						if (date.day == 29)
-							list[date.year][date.month + 1][1].insert(*task);
+							list[date.year][date.month + 1][1].insert(task);
 						else
-							list[date.year][date.month][date.day + 1].insert(*task);
+							list[date.year][date.month][date.day + 1].insert(task);
 					}
 					else if (months[date.month].second == date.day) {														//последний день месяца
 						if (date.month == 12)
-							list[date.year + 1][1][1].insert(*task);
+							list[date.year + 1][1][1].insert(task);
 						else
-							list[date.year][date.month + 1][1].insert(*task);
+							list[date.year][date.month + 1][1].insert(task);
 					}
 					else
-						list[date.year][date.month][date.day + 1].insert(*task);												// общий случай
-					task = list[task->date.year][task->date.month][task->date.day].erase(task);
-
-				}
-				else
-				{
-					++task;
+						list[date.year][date.month][date.day + 1].insert(task);												// общий случай
+					delTask(task,true);
+					if (day->empty()) {
+						list[date.year][date.month].erase(date.day);
+						break;
+					}
 				}
 			}
 		}
